@@ -1,0 +1,56 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: Deploy a Lambda function
+
+Parameters:
+  ProjectName:
+    Description: A name to identify resources which belong to the named project.
+    Type: String
+
+Resources:
+  lambdaFunctionBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+
+  functionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      Path: !Sub /${ProjectName}/
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - "sts:AssumeRole"
+      ManagedPolicyArns:
+        - !Sub arn:${AWS::Partition}:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+        - !Sub arn:${AWS::Partition}:iam::aws:policy/AWSXRayDaemonWriteAccess
+        - !Sub arn:${AWS::Partition}:iam::aws:policy/CloudWatchLambdaInsightsExecutionRolePolicy
+
+  lambdaFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Description: A simple Lambda function
+      MemorySize: 128
+      Role: !GetAtt functionRole.Arn
+      Runtime: python3.11
+      PackageType: Zip
+      Handler: index.lambda_handler
+      Code:
+        S3Bucket: !Ref lambdaFunctionBucket
+        S3Key: lambda.zip
+      Tags:
+        - Key: ProjectName
+          Value: !Ref ProjectName
+
+Outputs:
+  LambdaNameArn:
+    Description: Lambda ARN
+    Value: !GetAtt lambdaFunction.Arn

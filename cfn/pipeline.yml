@@ -1,0 +1,12 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: Deploy pipeline for build and deploy
+
+Parameters:
+  ProjectName:
+    Description: Name of the project
+    Type: String
+
+Resources:
+
+
+Outputs:
