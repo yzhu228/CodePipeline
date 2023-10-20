@@ -1,5 +1,11 @@
 exclude: ^\.git/.*$
 repos:
+-   repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v2.3.0
+    hooks:
+    -   id: check-added-large-files
+    -   id: end-of-file-fixer
+    -   id: trailing-whitespace
 - repo: https://github.com/aws-cloudformation/cfn-lint
   rev: v0.82.2  # The version of cfn-lint to use
   hooks:
