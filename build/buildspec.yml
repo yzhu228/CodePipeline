@@ -10,16 +10,21 @@ phases:
     runtime-versions:
       python: 3.11
     commands:
-      - echo "$YZ_VAR in install phase"
+      - echo "$YZ_VAR1 in install phase"
 
   pre_build:
     commands:
-      - echo "$YZ_VAR is in pre_build phase"
+      - echo "$YZ_VAR1 is in pre_build phase"
 
   build:
     commands:
-      - echo "$YZ_VAR is in build phase"
+      - echo "$YZ_VAR1 is in build phase"
 
   post_build:
     commands:
-      - echo "$YZ_VAR is in post_build phase"
+      - echo "$YZ_VAR1 is in post_build phase"
+
+artifacts:
+  files:
+    - 'src/**/*'
+  name: lambda.zip
