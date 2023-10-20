@@ -1,0 +1,7 @@
+exclude: ^\.git/.*$
+repos:
+- repo: https://github.com/aws-cloudformation/cfn-lint
+  rev: v0.82.2  # The version of cfn-lint to use
+  hooks:
+    - id: cfn-lint
+      files: cfn/.*\.(json|yml|yaml)$

@@ -3,9 +3,17 @@ AWSTemplateFormatVersion: 2010-09-09
 Description: Deploy CodeBuild project
 
 Parameters:
+# Required parameters
   ProjectName:
     Description: Name of the project
     Type: String
+  ArtefactBucketArn:
+    Description: Bucket to store/upload artefacts
+    Type: String
+  RepoName:
+    Description: Name of the repository
+    Type: String
+# Optional parameters
   StackLabel:
     Description: A label distinct resources and stacks created by this template.
     Type: String
@@ -14,12 +22,6 @@ Parameters:
     Description: ARN of a KMS used to encrypt artefact bucket
     Type: String
     Default: ''
-  ArtefactBucketArn:
-    Description: Bucket to store/upload artefacts
-    Type: String
-  RepoName:
-    Description: Name of the repository
-    Type: String
   RepoBranch:
     Description: Branch this pipeline build
     Type: String
@@ -28,6 +30,10 @@ Parameters:
     Description: Source type of build type
     Type: String
     Default: CODEPIPELINE
+  BuildProjectImage:
+    Description: The image for the build project
+    Type: String
+    Default: aws/codebuild/standard:7.0
 
 Conditions:
   IsSourceFromPipeline:
@@ -86,7 +92,7 @@ Resources:
                 Resource:
                   - !Sub '${ArtefactBucketArn}/*'
 
-  KmsAccessPolicy:
+  KmsAccessRolePolicy:
     Condition: UseKmsForArtefactBucket
     Type: AWS::IAM::RolePolicy
     Properties:
@@ -110,6 +116,7 @@ Resources:
     Type: AWS::CodeBuild::Project
     Properties:
       Name: !Sub '${ProjectName}-${StackLabel}-build'
+      BadgeEnabled: true
       Artifacts:
         Type: S3
         Path: !Ref ProjectName
@@ -120,6 +127,7 @@ Resources:
         Location: !Ref ArtefactBucketArn
       Source:
         Type: !Ref SourceType
+        BuildSpec: 'build/buildspec.yml'
         Auth:
           !If
             - IsSourceFromPipeline
@@ -139,7 +147,7 @@ Resources:
       Environment:
            Type: LINUX_CONTAINER
            ComputeType: BUILD_GENERAL1_SMALL
-           Image: aws/codebuild/standard:7.0
+           Image: !Ref BuildProjectImage
       Tags:
         - Key: ProjectName
           Value: !Ref ProjectName
