@@ -1,0 +1,25 @@
+version: 0.2
+
+evn:
+  shell: bash
+  variables:
+    YZ_VAR1: 'Zhu'
+
+phases:
+  install:
+    runtime-versions:
+      python: 3.11
+    commands:
+      - echo "$YZ_VAR in install phase"
+
+  pre_build:
+    commands:
+      - echo "$YZ_VAR is in pre_build phase"
+
+  build:
+    commands:
+      - echo "$YZ_VAR is in build phase"
+
+  post_build:
+    commands:
+      - echo "$YZ_VAR is in post_build phase"

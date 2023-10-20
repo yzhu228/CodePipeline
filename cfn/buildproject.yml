@@ -1,0 +1,147 @@
+
+AWSTemplateFormatVersion: 2010-09-09
+Description: Deploy CodeBuild project
+
+Parameters:
+  ProjectName:
+    Description: Name of the project
+    Type: String
+  StackLabel:
+    Description: A label distinct resources and stacks created by this template.
+    Type: String
+    Default: main
+  ArtefactBucketKmsArn:
+    Description: ARN of a KMS used to encrypt artefact bucket
+    Type: String
+    Default: ''
+  ArtefactBucketArn:
+    Description: Bucket to store/upload artefacts
+    Type: String
+  RepoName:
+    Description: Name of the repository
+    Type: String
+  RepoBranch:
+    Description: Branch this pipeline build
+    Type: String
+    Default: 'main'
+  SourceType:
+    Description: Source type of build type
+    Type: String
+    Default: CODEPIPELINE
+
+Conditions:
+  IsSourceFromPipeline:
+    Fn::Equals:
+      - !Ref SourceType
+      - CODEPIPELINE
+  UseKmsForArtefactBucket:
+    Fn::Not:
+      - Fn::Equals:
+          - !Ref ArtefactBucketKmsArn
+          - ''
+
+Resources:
+# Build project and its service role
+  BuildProjectRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Action: 'sts:AssumeRole'
+            Principal:
+              Service:
+                - 'codebuild.amazonaws.com'
+      Tags:
+        - Key: ProjectName
+          Value: !Ref ProjectName
+        - Key: StackLabel
+          Value: !Ref StackLabel
+      Policies:
+        - PolicyName: !Sub '${ProjectName}-${StackLabel}-BuildRolePolicy'
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Sid: CloudWatchLogsPolicy
+                Effect: Allow
+                Action:
+                  - 'logs:CreateLogGroup'
+                  - 'logs:CreateLogStream'
+                  - 'logs:PutLogEvents'
+                Resource:
+                  - !Sub 'arn:${AWS::Partition}:log:${AWS::Region}:${AWS::AccountId}:log-group:/${ProjectName}/${StackLabel}/CodeBuild/build'
+                  - !Sub 'arn:${AWS::Partition}:log:${AWS::Region}:${AWS::AccountId}:log-group:/${ProjectName}/${StackLabel}/CodeBuild/build:*'
+              - Sid: S3BucketAccessPolicy
+                Effect: Allow
+                Action:
+                  - s3:GetBucketLocation
+                Resource:
+                  - !Ref ArtefactBucketArn
+              - Sid: S3ObjectAccessPolicy
+                Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:PutObject
+                Resource:
+                  - !Sub '${ArtefactBucketArn}/*'
+
+  KmsAccessPolicy:
+    Condition: UseKmsForArtefactBucket
+    Type: AWS::IAM::RolePolicy
+    Properties:
+      RoleName: !Ref BuildProjectRole
+      PolicyName: !Sub '${ProjectName}-${StackLabel}-KMSAccessPolicy'
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: KmsAccess
+            Effect: Allow
+            Action:
+              - kms:Encrypt
+              - kms:Decrypt
+              - kms:ReEncrypt*
+              - kms:DescribeKey*
+              - kms:GenerateDataKey
+            Resource:
+              - !Ref ArtefactBucketKmsArn
+
+  BuildProject:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Name: !Sub '${ProjectName}-${StackLabel}-build'
+      Artifacts:
+        Type: S3
+        Path: !Ref ProjectName
+        NamespaceType: BUILD_ID
+        Name: lambda.zip
+        OverrideArtifactName: true
+        Packaging: ZIP
+        Location: !Ref ArtefactBucketArn
+      Source:
+        Type: !Ref SourceType
+        Auth:
+          !If
+            - IsSourceFromPipeline
+            - AWS::NoValue
+            - Type: OAUTH
+        Location:
+          !If
+            - IsSourceFromPipeline
+            - AWS::NoValue
+            - !Sub 'https://github.com/${RepoName}'
+      SourceVersion: !Ref RepoBranch
+      LogsConfig:
+        CloudWatchLogs:
+          GroupName: !Sub '/${ProjectName}/${StackLabel}/CodeBuild/build'
+          Status: ENABLED
+      ServiceRole: !GetAtt BuildProjectRole.Arn
+      Environment:
+           Type: LINUX_CONTAINER
+           ComputeType: BUILD_GENERAL1_SMALL
+           Image: aws/codebuild/standard:7.0
+      Tags:
+        - Key: ProjectName
+          Value: !Ref ProjectName
+        - Key: StackLabel
+          Value: !Ref StackLabel
