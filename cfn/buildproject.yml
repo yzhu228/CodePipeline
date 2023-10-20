@@ -69,15 +69,13 @@ Resources:
           PolicyDocument:
             Version: '2012-10-17'
             Statement:
-              - Sid: CloudWatchLogsPolicy
+              - Sid: CloudWatchLogPolicy
                 Effect: Allow
                 Action:
-                  - 'logs:CreateLogGroup'
-                  - 'logs:CreateLogStream'
-                  - 'logs:PutLogEvents'
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
                 Resource:
-                  - !Sub 'arn:${AWS::Partition}:log:${AWS::Region}:${AWS::AccountId}:log-group:/${ProjectName}/${StackLabel}/CodeBuild/build'
-                  - !Sub 'arn:${AWS::Partition}:log:${AWS::Region}:${AWS::AccountId}:log-group:/${ProjectName}/${StackLabel}/CodeBuild/build:*'
+                  - !Sub 'arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:${BuildProjectLogGroup}:*'
               - Sid: S3BucketAccessPolicy
                 Effect: Allow
                 Action:
@@ -112,6 +110,14 @@ Resources:
             Resource:
               - !Ref ArtefactBucketKmsArn
 
+  BuildProjectLogGroup:
+    Type: AWS::Logs::LogGroup
+    UpdateReplacePolicy: Delete
+    DeletionPolicy: Delete
+    Properties:
+      LogGroupName: !Sub '/aws/codebuild/${ProjectName}/${StackLabel}/Build'
+      RetentionInDays: 7
+
   BuildProject:
     Type: AWS::CodeBuild::Project
     Properties:
@@ -141,7 +147,7 @@ Resources:
       SourceVersion: !Ref RepoBranch
       LogsConfig:
         CloudWatchLogs:
-          GroupName: !Sub '/${ProjectName}/${StackLabel}/CodeBuild/build'
+          GroupName: !Ref BuildProjectLogGroup
           Status: ENABLED
       ServiceRole: !GetAtt BuildProjectRole.Arn
       Environment:
