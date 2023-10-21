@@ -25,6 +25,7 @@ phases:
       - echo "$YZ_VAR1 is in post_build phase"
 
 artifacts:
-  files:
-    - 'src/**/*'
   name: lambda.zip
+  base-directory: src
+  files:
+    - '**/*'
